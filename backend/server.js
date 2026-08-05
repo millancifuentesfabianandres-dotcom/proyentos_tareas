@@ -97,5 +97,92 @@ const server = http.createServer(async(req, res) => {
     const tasck = parseInt(urlPartes[2]);
 
     let body = '';
-    req.on('data', chunk => { body += chunk.toString})
-   }
+    req.on('data', chunk => { body += chunk.toString});
+   
+    req.on("end", async () => {
+        try {
+            const {title, description, is_completed, author } = JSON.parse(body);
+
+            // 1. Validar si la tarea existe en la base de datos todo_db
+            const [rows] = await pool.query("SELECT author FROM taskas WHERE id = ?", [taskid]);
+
+            if(rows.length === 0){
+                res.writeHead(404, {"Content-Type": "application/json" });
+                res.end(JSON.stringify({ status: "error", message: "La tarea no existe "}));
+                return;
+            }
+
+            // 2. Regra de negocio: Validar propiedad del autor 
+            if (rows[0].author !== author) {
+                res.writeHead(403, {"Content-Type": "application/json" });
+                res.end(JSON.stringify({ status: "error", message: "No autorizado. La tarea es de ${rows[0].author}" }));
+                return;
+            }
+
+            // 3. Ejecutar la actualizacion directa en MYSQL con marcadores (?)
+            const sql = "UPDATE tasks SET title = ?, description = ?, is_completed = ? WHERE id = ? ";
+            await pool.query(sql, [title, description || null, is_completed, taskid]);
+
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ status: "success", data: null }));
+           }catch(error){
+            res.writeHead(500, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ status: "error", message: "Error en MYSQL: " + error.message}));
+           }
+        });
+        return;
+    }
+
+    // RUTA 4: Eliminar tarea (DELETE /tasks/:id)
+    if (req.url.startsWith("/tasks/") && req.method === "DELETE") {
+        const urlParts = req.url.split("/");
+        const taskid = parseInt(urlParts[2]);
+
+        let body = " ";
+        req.on("data," chunk => { body += chunk.toString(); });
+
+        req.on("end," async ()=> { 
+         try{
+            const { author } = JSON.parce(body);
+
+            // Paso A: Consultar a MYSQL si la tarea existe y quien es el dueño 
+            const [rows] = await pool.query("SELECT author FROM tasks WHERE id = ?", [taskId]);
+
+             if (rows.length === 0) {
+                res.writeHead(404, {"Content-Type": "application/json" });
+                res.end(JSON.stringify({ status: "error", message: "La tarea no existe en la BD" }));
+                return;
+         }
+          
+         const tasks = eows[0];
+
+         // Logica de proteccion: Comparamos el autor del JSON con el autor de la fila de MYSQL
+          if (task.author !== author) {
+                res.writeHead(403, {"Content-Type": "application/json" });
+                res.end(JSON.stringify({ status: "error", message: "No autorizado. La tarea le pertenece ${task.author}" }));
+                return;
+          }
+
+        // Paso B: Si pasa el filtro, ejecutamos el borrado fisico en la tabla 
+        await pool.query("DELETE FROM tasks WHERE id = ?", [taskId]);
+
+        res.writeHead(200, {"Content-Type": "application/json" });
+        res.end(JSON.stringify({ status: "success", data: null }));
+      } catch(error) {
+        res.writeHead(500, {"Content-Type": "application/json" });
+        res.end(JSON.stringify({ status: "error", messge: "Fallo al eliminar de la BD: " + error.message }));
+      }
+  });
+  return;
+ }
+
+  // 404 - Ruta no encontrada 
+   res.writeHead(404, {"Content-Type": "application/json" });
+   res.end(JSON.stringify({ status: "error", message: "Endpoint no encontrado " }));
+ });
+ 
+ const PORT = 3000;
+ server.listen(PORT, () => {
+    console.log(" Servidor Vanila con MYSQL real corriendo en http://localhost:${PORT}")
+ }); 
+   

@@ -143,9 +143,105 @@ function cambiarModoEdicion(task, taskCard) {
     const btnCancelar = taskCard.querySelector(".btn-cancel-edit");
     const btnGuardar = taskCard.querySelector(".btn-save-edit");
 
-    btnGuardar.addEventListener("click", () => {
-        const nuevoTitulo = taskcard.querySelector(".edit-title").value.trim();
-        const nuevaDescripcion = taskCard.querySelector(".edit-description").value.trim();
+        btnCancelar.addEventListener ("click", () =>fetchTask());
 
-        if ()
+        btnGuardar.addEventListener("click", () => {
+         const nuevoTitulo = taskcard.querySelector(".edit-title").value.trim();
+         const nuevaDescripcion = taskCard.querySelector(".edit-description").value.trim();
+
+        if (!nuevoTitulo) {¨
+            openCustomModal("Validacion", "El titulo de la tarea es obligatorio.", false);
+            return;
+        }
+
+        updateTask(task.id, nuevoTitulo, nuevaDescripcion, task.is_completed);
+    });
+    }
+
+    //6. CREAR TAREA (POST)
+    taskForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const title = taskTitle.value.trim();
+        const description = taskDescription.value.trim();
+
+        try {
+            cosnt response = await fetch(API_URL, {
+                method: "POST",
+                headers: { content-Type": "application/json" },
+                body: JSON.stringify({ title, description, author: AUTHOR })
+        });
+
+        if (resonse.ok) {
+            taskform.reset();
+            fetchTasks();
+        }
+     });
+
+     // 7. ACTUALIZAR TAREA (PUT)
+     async function updateTask(id, title, description, is_completed) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, description, is_completed, author: AUTHOR })
+            });
+
+            const json = await response.json();
+            fetchTasks();
+            }  else {
+                openCustomModal("Error de servidor", json.message || "Error al actualizar en el servidor.", false);
+            }
+     } catch (error) {
+        openCustomModal("Error de red", "Error al comunicar la actualizacion", false);
+        }
+    }
+
+    //8. ELIMINAR TAREA (DELETE)
+    async function deleteTask(id, taskAuthor) {
+        if (AUTHOR !== taskAuthor) {
+            openCustomModal("Acceso denegado", ¡No autorizado! Esta tarea es de "${taskAuthor}", false);
+            return;
+        }            
+
+
+    openCustomModal (
+        "¡confirmar Eliminacion?",
+        "¿Estas seguro de eliminar esta tarea de la base de datos de manera permanente?,
+        true, 
+     async () => {  
+        try {
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ author: AUTHOR })
+            });
+
+            const json = await response.json();
+
+            if (response.ok && json.status === "success") {
+                fetchTasks();
+                } else {
+                    openCustomModal("Error de servidor", json.message || "Fallo de autorizacion en el servidor, false);
+                }
+        } catch (error) {
+            openCustomModal("Error de red", "Error al eliminar la tarea. ", false);
+        }
+    }
+    );
+}
+
+//9. CERRAR SESION (LOGOUT)
+logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("todo_author_sesion");
+        window.location.reload();
+});
+
+// === INICIALIZACION AL ABRIR LA PAGINA ===
+        checkAuth();
+
+
+
+
+        
 
